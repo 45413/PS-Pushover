@@ -7,14 +7,19 @@
     Some options can be globally set for all messages per session.
 
     .NOTES
-    AUTHOR: Kieranties
+    AUTHOR: Austin Sabel (45413)
+    SPECIAL THANKS: Kieranties (https://github.com/Kieranties)
+        For when I started the project I came across his original module which 
+        is the basis of all this wonderfulness!
+    
 
     .LINK
     https://pushover.net/api
 
     .LINK 
-    https://github.com/Kieranties/PS-Pushover
+    https://github.com/asabel/PS-Pushover
 #>
+
 
 # The valid collection of sounds allowed by pushover
 $pushoverSounds = @("pushover","bike","bugle","cashregister",
@@ -209,6 +214,7 @@ Function Set-PushoverSession{
         # The user key of the user who will receive the message
         [string]$user,
         # The priority of the message.  Call Get-PushoverPriorities for valid options
+        [ValidateSet("Quiet","Normal","Emergency","Confirmation")]  
         [ValidateScript({Test-AgainstPriorities $_})]
         [string]$priority,
         # The device name 
@@ -216,7 +222,13 @@ Function Set-PushoverSession{
         # The title for messages
         [string]$title,
         # The sound to use on the device.  Call Get-PushoverSounds for valid options
-        [ValidateScript({Test-AgainstSounds $_})]
+        [ValidateSet("pushover","bike","bugle","cashregister",
+                    "classical", "cosmic", "falling", "gamelan",
+                    "incoming", "intermission", "magic", "mechanical",
+                    "pianobar", "siren", "spacealarm", "tugboat",
+                    "alien", "climb", "persistent", "echo", "updown",
+                    "none")]
+        #[ValidateScript({Test-AgainstSounds $_})]
         [string]$sound,
         # How often (in seconds) Pushover should retry sending an emergency message
         [ValidateScript({Test-Retry $_})]
@@ -226,14 +238,14 @@ Function Set-PushoverSession{
         [int]$expire
     )
 
-    if($token){ $Script:token = $token }
-    if($user){ $Script:user = $user }
-    if($priority){ $Script:priority = $priority }
-    if($device) { $Script:device = $device }
-    if($title) { $Script:title = $title }
-    if($sound) { $Script:sound = $sound }
-    if($retry) { $Script:retry = $retry }
-    if($expire) {$Script:expire = $expire }
+    if($token){ $pspo.Preferences.token = $token }
+    if($user){ $pspo.Preferences.user = $user }
+    if($priority){ $pspo.Preferences.priority = $priority }
+    if($device) { $pspo.Preferences.device = $device }
+    if($title) { $pspo.Preferences.title = $title }
+    if($sound) { $pspo.Preferences.sound = $sound }
+    if($retry) { $pspo.Preferences.retry = $retry }
+    if($expire) {$pspo.Preferences.expire = $expire }
 }
 
 <#
@@ -246,14 +258,14 @@ Function Set-PushoverSession{
 #>
 Function Get-PushoverSession{
     @{
-        token = $Script:token
-        user = $Script:user
-        priority = $Script:priority
-        device = $Script:device
-        title = $Script:title
-        sound = $Script:sound
-        retry = $Script:retry
-        expire = $Script:expire
+        token = $pspo.Preferences.token
+        user = $pspo.Preferences.user
+        priority = $pspo.Preferences.priority
+        device = $pspo.Preferences.device
+        title = $pspo.Preferences.title
+        sound = $pspo.Preferences.sound
+        retry = $pspo.Preferences.retry
+        expire = $pspo.Preferences.expire
     }
 }
 
@@ -292,19 +304,26 @@ Function Send-PushoverMessage{
         [Parameter(Mandatory=$true, Position=0, HelpMessage="Message to send")]
         [string]$message,
         # Required if not set using Set-PushoverSession.  The api token for the application
-        [string]$token = $Script:token,
+        [string]$token = $pspo.Preferences.token,
         # Required if not set using Set-PushoverSession. The user token of the message recipient
-        [string]$user = $Script:user,
+        [string]$user = $pspo.Preferences.user,
         # The priority of the message.  Call Get-PushoverPriorities for valid options
+        [ValidateSet("Quiet","Normal","Emergency","Confirmation")]
         [ValidateScript({Test-AgainstPriorities $_})]
-        [string]$priority = $Script:priority,
+        [string]$priority = $pspo.Preferences.priority,
         # The device name
-        [string]$device = $Script:device,
+        [string]$device = $pspo.Preferences.device,
         # The title of the message
-        [string]$title = $Script:title,
+        [string]$title = $pspo.Preferences.title,
         # The sound to use on the device.  Call Get-PushoverSounds for valid options
-        [ValidateScript({Test-AgainstSounds $_})]
-        [string]$sound = $Script:sound,
+        [ValidateSet("pushover","bike","bugle","cashregister",
+                    "classical", "cosmic", "falling", "gamelan",
+                    "incoming", "intermission", "magic", "mechanical",
+                    "pianobar", "siren", "spacealarm", "tugboat",
+                    "alien", "climb", "persistent", "echo", "updown",
+                    "none")]
+        #[ValidateScript({Test-AgainstSounds $_})]
+        [string]$sound = $pspo.Preferences.sound,
         # An associated url for the message
         [string]$url,
         # The title to use for the provided -url parameter
@@ -314,10 +333,10 @@ Function Send-PushoverMessage{
         $timestamp,
         # How often (in seconds) Pushover should retry sending an emergency message
         [ValidateScript({Test-Retry $_})]
-        [int]$retry = $Script:retry,
+        [int]$retry = $pspo.Preferences.retry,
         # How long (in seconds) an emergency message is valid.  Once -expire is reached an ackowledgement is no longer required
         [ValidateScript({Test-Expire $_})]
-        [int]$expire = $Script:expire
+        [int]$expire = $pspo.Preferences.expire
     )
 
     # Validate
@@ -339,6 +358,9 @@ Function Send-PushoverMessage{
         retry = $retry
         expire = $expire
     }  
+    
+    Write-Verbose "Sending Message with Following Options"
+    Write-Verbose ($parameters | Out-String)
 
     # Send the message
     $parameters | Invoke-RestMethod -Uri "https://api.pushover.net/1/messages.json" -Method Post
@@ -359,7 +381,7 @@ Function Confirm-PushoverReceipt{
         [Parameter(ValueFromPipelineByPropertyName=$true,Mandatory=$true)]
         $receipt,
         # Required if not set using Set-PushoverSession.  The api token for the application
-        [string]$token = $Script:token
+        [string]$token = $pspo.Preferences.token
     )
 
     Test-Token $token
@@ -378,9 +400,167 @@ Function Confirm-PushoverReceipt{
     Invoke-RestMethod -Uri "https://api.pushover.net/1/receipts/$receipt.json?token=$token" | select $format
     
 }
-# Expose module content
-New-Alias spm Send-PushoverMessage
-Export-ModuleMember -Function *Pushover* -Alias *
 
-# Set default session params
-Set-PushoverSession -retry 30 -expire 86400
+function new-pspoUserPreferences
+{
+    if (!(test-path "$(Split-Path -Parent $PROFILE)\PS-Pushover.UserPreferences.ps1") -and (test-path "$PSScriptRoot\PS-Pushover.UserPreferences.ps1"))
+    {
+         copy-item "$PSScriptRoot\PS-Pushover.UserPreferences.ps1" "$(Split-Path -Parent $PROFILE)\PS-Pushover.UserPreferences.ps1"   
+    } else {
+        Write-Warning "User preferences file already exist. Please check $(Split-Path -Parent $PROFILE)"
+    }
+}
+
+# Overwrites the default  preferences with user specified preferences
+function UpdateDefaultPreferencesWithUserPreferences([hashtable]$userPreferences)
+{
+    # Walk the user specified settings and overwrite the defaults with them
+    foreach ($key in $userPreferences.Keys)
+    {
+        if (!$global:pspo.Preferences.ContainsKey($key))
+        {
+            Write-Warning "$key is not a recognized PS-Pushover preference"
+            continue
+        }
+        else
+        {
+            if($userPreferences.$key -ne $null) {
+                Write-Debug "Trying to Set $key = $(($userPreferences.$key))"
+                $pspo.Preferences.$key = $userPreferences.$key                
+            }
+            else
+            {
+                Write-Debug "`$userPreferences.$key = null"
+            }
+		
+        }
+    }
+}
+
+# -----------------------------------------------------------------------
+# Displays help usage
+# -----------------------------------------------------------------------
+function WriteUsage([string]$msg)
+{
+    if ($msg) { Write-Host $msg }
+    
+    $OFS = ','
+    Write-Host @"
+ 
+To load PS-Pushover (PSPO) using the default PSPO preferences execute: 
+
+    Import-Module PS-Pushover
+    
+To load all PSPO modules but overwrite some default preferences, pass in
+a hashtable. In this hashtable add the property and values you wish e.g.: 
+
+    Import-Module PS-Pushover -args @{ token = "YOUR-APPLICATION-TOKEN" }
+      
+To have complete control all the default PSPO options, after importing 
+The module run the command "new-pspoUserPreferences" which will copy the
+PS-Pushover.UserPreferences.ps1 file to your Powershell `$PROFILE directory.
+Edit the file and modify the settings as desired. These user specific 
+settings will be loaded instead of the default shipped in this Module. e.g.:
+    
+    Import-Module PS-Pushover
+    new-pspoUserPreferences
+    
+After modifying this file you must reimport the module or restart your 
+powershell sessions.
+ 
+"@
+}
+
+# -----------------------------------------------------------------------
+#   Initialize Preferences 
+# -----------------------------------------------------------------------
+$UserPreferencesFileName = 'PS-Pushover.UserPreferences.ps1'
+
+$global:pspo = @{ 
+    Preferences = @{
+        token = $null
+        user = $null
+        priority = $null
+        device = $null
+        title = $null
+        url = $url
+        url_title = $urlTitle
+        sound = $null
+        retry = 30
+        expire = 86400
+    } 
+}
+
+# -----------------------------------------------------------------------
+# Process module arguments - allows user to override the default options 
+# using Import-Module -args
+# -----------------------------------------------------------------------
+if ($args.Length -gt 0) 
+{
+    if (([string]$args[0]).toLower() -eq 'help') 
+    {
+        # Display help/usage info
+        WriteUsage
+        return	
+    }
+    elseif (([string]$args[0]).toLower() -eq 'verbose') 
+    {
+        $VerbosePreference = "Continue"
+        Write-Verbose "Verbose mode enabled"
+    }
+    elseif (([string]$args[0]).toLower() -eq 'debug') 
+    {
+        $DebugPreference = "Continue"
+        $VerbosePreference = "Continue"
+        Write-Debug "Debug mode enabled"
+    }      
+    elseif ($args[0] -is [hashtable])
+    {
+        # Hashtable of settings passed directly
+        UpdateDefaultPreferencesWithUserPreferences $args[0]
+    }
+    elseif (Test-Path $args[0])
+    {
+        # Attempt to load the user specified settings by executing the specified script
+        $userPreferences = & $args[0]	
+        if ($userPreferences -isnot [hashtable]) 
+        {
+            WriteUsage "'$($args[0])' must return a hashtable instead of a $($userPreferences.GetType().FullName)"
+            return
+        }
+
+        UpdateDefaultPreferencesWithUserPreferences $userPreferences
+    }
+    else
+    {
+        # Display help/usage info
+        WriteUsage "'$($args[0])' is not recognized as either a hashtable or a valid path"
+        return		
+    }
+}
+
+if (Test-Path "$(split-path $PROFILE -parent)\$UserPreferencesFileName" )
+{
+    # Attempt to load the user specified settings by executing the specified script
+    $userPreferences = & "$(split-path $PROFILE -parent)\$UserPreferencesFileName"
+    UpdateDefaultPreferencesWithUserPreferences $userPreferences
+}
+elseif (Test-Path $PSScriptRoot\$UserPreferencesFileName )
+{
+    # Attempt to load the generic specified settings by executing the specified script
+    $userPreferences = & $PSScriptRoot\$UserPreferencesFileName 
+    UpdateDefaultPreferencesWithUserPreferences $userPreferences
+}
+else 
+{  
+    Write-Verbose "Could not find default preferences file. Setting minimum defaults"      
+    return
+}
+
+# -----------------------------------------------------------------------
+# Expose module content
+# -----------------------------------------------------------------------
+New-Alias spm Send-PushoverMessage
+Export-ModuleMember -Alias * -Function * -Cmdlet *
+Remove-Item Function:\WriteUsage
+Remove-Item Function:\UpdateDefaultPreferencesWithUserPreferences

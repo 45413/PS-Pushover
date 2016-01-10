@@ -1,4 +1,4 @@
-Copyright (c) 2011-2016 Austin Sabel.
+Copyright (c) 2015-2016 Austin Sabel.
 
 Based of: https://github.com/Kieranties/PS-Pushover
 
