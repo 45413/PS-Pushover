@@ -28,8 +28,10 @@ If you're going to be using the function often, it's easier to set things once.
 
 In your session/script you can do the following:
     
+```powershell 
     Import-Module PS-Pushover
     Set-PushoverSession -token <your API Token> -user <your User Key>
+```
 
 Other options are also available, call ``Set-PushoverSession -detailed`` for more information
 
@@ -39,11 +41,12 @@ If you entend to be import this module in your profile you it is recommend that 
 ``PS-Pushover.UserPreferences.ps1`` config file which should be placed in your $PROFILE parent directory. 
 Edit the file and modify the settings as desired. These user specific settings will be loaded 
 instead of the default shipped in this Module. You can quickly create this file by running the following commands:
-        
+
+```powershell        
     Import-Module PS-Pushover
     new-pspoUserPreferences
     notepad "$(split-path $PROFILE -parent)\PS-Pushover.UserPreferences.ps1"
-        
+```        
 After modifying this file you must reimport the module or restart your powershell sessions.   
 
 Functions
